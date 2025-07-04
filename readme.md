@@ -1,72 +1,97 @@
-# ShopingKaro
+# Shared Wishlist App
 
-ShopingKaro is a web application developed in Node.js that allows users to easily browse and shop for various products. With a user-friendly interface and a variety of features, ShopingKaro aims to provide a seamless online shopping experience.
+A collaborative platform where multiple users can create, manage, and interact with wishlists in real-time—perfect for group shopping sprees, event planning, or shared gift lists.
 
-## Table of Contents
+---
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
+## Tech Stack Used
+- **Frontend:** React, Tailwind CSS, Vite
+- **Backend:** Node.js, Express
+- **Database:** MongoDB (via MongoDB Atlas)
+- **Authentication:** JWT (simple/dummy auth)
+- **Deployment:** Vercel/Netlify (frontend), Render/Railway (backend), MongoDB Atlas (database)
+
+---
+
+## Setup Instructions
+
+### Prerequisites
+- Node.js (v16+ recommended)
+- npm or yarn
+- MongoDB Atlas account (or local MongoDB)
+
+### 1. Clone the Repository
+```bash
+git clone <your-repo-url>
+cd shoppingkaro
+```
+
+### 2. Setup the Backend
+```bash
+cd backend
+cp .env.example .env # Create your .env file
+npm install
+```
+
+#### Example `.env` for Backend
+```
+PORT=5000
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/wishlist-app?retryWrites=true&w=majority
+JWT_SECRET=your_jwt_secret
+```
+
+#### Run the Backend
+```bash
+npm start
+# or
+node server.js
+```
+
+### 3. Setup the Frontend
+```bash
+cd ../frontend
+cp .env.example .env # (if needed)
+npm install
+```
+
+#### Example `.env` for Frontend (if using Vite proxy, usually not needed)
+```
+VITE_API_URL=http://localhost:5000/api
+```
+
+#### Run the Frontend
+```bash
+npm run dev
+```
+
+### 4. Open the App
+- Frontend: [http://localhost:5173](http://localhost:5173)
+- Backend: [http://localhost:5000](http://localhost:5000)
+
+---
+
+## Assumptions or Limitations
+- **Authentication is simple/dummy:** No email verification or password reset. JWT is used for session management.
+- **Invite feature is mocked:** Inviting users to a wishlist only updates the UI and does not send real invitations.
+- **No real-time sync:** Changes are not instantly reflected for all users unless the page is refreshed. (No WebSocket/Firebase integration yet.)
+- **No file/image uploads:** Product images are referenced by URL only.
+- **No payment or checkout:** The app is for wishlist management, not actual purchases.
+- **Mobile responsiveness:** The UI is responsive, but some advanced mobile features (like PWA/offline) are not implemented.
+- **Deployment:** Example deployment instructions are provided, but you must set up your own hosting and environment variables.
+
+---
 
 ## Features
-
-- **User-friendly Interface:** Intuitive design for easy navigation and a pleasant user experience.
-- **Product Browsing:** Browse through a wide range of products conveniently categorized for quick access.
-- **Cart Management:** Add and remove items from the shopping cart with real-time updates.
-- **Responsive Design:** ShopingKaro is optimized for various devices, ensuring a seamless experience on desktops, tablets, and mobile phones.
-
-## Tech Stack
-
-- **JavaScript (45.0%):** The primary programming language used for the functionality and interactivity of ShopingKaro.
-- **EJS (31.8%):** Embedded JavaScript templates for dynamic content rendering.
-- **CSS (12.5%):** Styling to enhance the visual appeal and user interface.
-- **HTML (5.6%):** The backbone for structuring the web pages.
-- **Pug (5.1%):** A templating engine for concise and readable HTML code.
-
-## Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/your-username/ShopingKaro.git
-
-2. Install dependency:
-
-   ```bash
-   npm install
-
-5. Setup MongoDB
-
-   - Go to .env file
-   - Create a database in MongoDb
-   - Add a user and password in &lt;yourDBUser&gt; : &lt;password&gt; in below connection string.
-
-   ```
-   "mongodb+srv://<yourDBUser>:<password>@<yourDBcluster>/?retryWrites=true&w=majority",
-
-4. Run :
-
-   ```bash
-   npm run start
-
-Open your browser and visit http://localhost:3000 to access ShopingKaro.
-
-Explore the website, add products to your cart, and enjoy a seamless shopping experience.
-
-## Contributing
-
-If you'd like to contribute to ShopingKaro, please follow these guidelines:
-
-- Fork the repository on GitHub.
-- Clone your forked repository to your local machine.
-- Create a new branch for your feature or bug fix.
-- Make your changes and commit them with descriptive commit messages.
-- Push your changes to your forked repository.
-- Create a pull request to the main repository.
+- User authentication (register/login)
+- Create, update, delete wishlists
+- Add, edit, delete products in wishlists
+- Invite users to wishlists (mocked)
+- See who added/edited each product
+- Comments and emoji reactions on products
+- Responsive design for mobile and desktop
 
 ## License
+MIT
 
-This project is licensed under the MIT License. Feel free to use, modify, and distribute it as per the license terms.
+---
+Feel free to contribute or open issues for improvements! 
