@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { login } from "../services/api";
 
-export default function Login() {
+export default function Login({ onAuth }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -14,6 +14,7 @@ export default function Login() {
     try {
       const res = await login({ email, password });
       localStorage.setItem("token", res.data.token);
+      if (onAuth) onAuth();
       navigate("/");
     } catch (err) {
       setError("Invalid credentials");
