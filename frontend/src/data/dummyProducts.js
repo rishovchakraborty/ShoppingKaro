@@ -6,12 +6,6 @@ export const DUMMY_PRODUCTS = [
     description: "Flagship Apple smartphone.",
   },
   {
-    name: "Nike Air Max",
-    imageUrl: "https://images.unsplash.com/photo-1512499617640-c2f999098c01?auto=format&fit=crop&w=400&q=80",
-    price: 199,
-    description: "Popular running shoes.",
-  },
-  {
     name: "Sony WH-1000XM5",
     imageUrl: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=400&q=80",
     price: 349,

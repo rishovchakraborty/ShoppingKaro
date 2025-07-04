@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getWishlists, createWishlist, addProduct } from '../services/api';
 import { DUMMY_PRODUCTS } from '../data/dummyProducts';
 
-export default function Dashboard() {
+export default function Dashboard({ onLogout }) {
   const [wishlists, setWishlists] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState('');
@@ -100,7 +100,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 via-green-50 to-white">
-      <Navbar />
+      <Navbar onLogout={onLogout} />
       <div className="max-w-5xl mx-auto py-8 px-4">
         <h2 className="text-3xl font-bold mb-6 text-gray-800">Demo E-Shopping Products</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-12">
