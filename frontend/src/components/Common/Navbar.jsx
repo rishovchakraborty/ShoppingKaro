@@ -10,7 +10,7 @@ export default function Navbar({ onLogout }) {
   return (
     <nav className="bg-white shadow-md py-4 px-8 flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <span className="text-2xl font-bold text-purple-700 tracking-tight">UXNIJIN</span>
+        <span className="text-2xl font-bold text-purple-700 tracking-tight">ShoppingKaro</span>
       </div>
       <div className="flex items-center gap-6">
         <a href="#" className="text-gray-700 hover:text-purple-700 font-medium">Home</a>

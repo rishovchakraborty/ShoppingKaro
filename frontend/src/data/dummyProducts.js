@@ -41,4 +41,10 @@ export const DUMMY_PRODUCTS = [
     price: 299,
     description: "Stylish smartwatch for Android/iOS.",
   },
+  {
+    name: "JBL Bluetooth Speaker",
+    imageUrl: "https://images.unsplash.com/photo-1519125323398-675f0ddb6308?auto=format&fit=crop&w=400&q=80",
+    price: 199,
+    description: "Portable wireless speaker with deep bass.",
+  },
 ]; 

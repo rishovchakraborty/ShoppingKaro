@@ -3,6 +3,9 @@ import Navbar from '../components/Common/Navbar';
 import { useNavigate } from 'react-router-dom';
 import { getWishlists, createWishlist, addProduct } from '../services/api';
 import { DUMMY_PRODUCTS } from '../data/dummyProducts';
+import HeroBanner from '../components/Dashboard/HeroBanner';
+import ProductCard from '../components/Dashboard/ProductCard';
+// Swiper imports removed
 
 export default function Dashboard({ onLogout }) {
   const [wishlists, setWishlists] = useState([]);
@@ -101,32 +104,23 @@ export default function Dashboard({ onLogout }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 via-green-50 to-white">
       <Navbar onLogout={onLogout} />
-      <div className="max-w-5xl mx-auto py-8 px-4">
-        <h2 className="text-3xl font-bold mb-6 text-gray-800">Demo E-Shopping Products</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-12">
+      <div className="max-w-7xl mx-auto py-8 px-4">
+        <HeroBanner />
+        <h2 className="text-3xl font-extrabold mb-8 text-gray-800 tracking-tight">Demo E-Shopping Products</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 auto-rows-fr mb-12">
           {DUMMY_PRODUCTS.map((prod, idx) => (
-            <div key={prod.name} className="bg-white rounded-2xl shadow-lg p-4 flex flex-col items-center hover:shadow-xl transition">
-              <img src={prod.imageUrl} alt={prod.name} className="w-32 h-32 object-cover rounded mb-2 border" />
-              <div className="font-bold text-lg text-center mb-1">{prod.name}</div>
-              <div className="text-green-700 font-semibold mb-1">₹{prod.price}</div>
-              <div className="text-xs text-gray-500 mb-2 text-center">{prod.description}</div>
-              <div className="flex gap-2 mb-2">
-                <button onClick={() => handleLike(idx)} className="bg-violet-100 text-violet-700 px-3 py-1 rounded-full font-semibold hover:bg-violet-200 transition">Like ({likeCounts[idx]})</button>
-                <button onClick={() => handleAddToGroup(idx)} className="bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold hover:bg-green-200 transition">Add to Group</button>
-              </div>
-              <div className="w-full mt-2">
-                <div className="text-xs text-gray-500 mb-1">Comments:</div>
-                <ul className="mb-2">
-                  {comments[idx].map((c, i) => (
-                    <li key={i} className="text-xs text-gray-700 mb-1">{c}</li>
-                  ))}
-                </ul>
-                <div className="flex gap-2">
-                  <input className="flex-1 p-1 border rounded text-xs" type="text" value={commentInputs[idx]} onChange={e => setCommentInputs(commentInputs.map((v, i) => i === idx ? e.target.value : v))} placeholder="Add comment" />
-                  <button onClick={() => handleComment(idx)} className="bg-violet-600 text-white px-2 py-1 rounded-full text-xs">Add</button>
-                </div>
-              </div>
-            </div>
+            <ProductCard
+              key={prod.name}
+              product={prod}
+              likeCount={likeCounts[idx]}
+              comments={comments[idx]}
+              commentInput={commentInputs[idx]}
+              onLike={handleLike}
+              onAddToGroup={handleAddToGroup}
+              onCommentInput={(i, val) => setCommentInputs(commentInputs.map((v, j) => j === i ? val : v))}
+              onAddComment={handleComment}
+              idx={idx}
+            />
           ))}
         </div>
         {/* Group Add Modal */}
