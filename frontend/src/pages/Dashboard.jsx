@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Common/Navbar';
 import { useNavigate } from 'react-router-dom';
-import { getWishlists, createWishlist, addProduct } from '../services/api';
+import { getWishlists, createWishlist, addProduct, deleteWishlist } from '../services/api';
 import { DUMMY_PRODUCTS } from '../data/dummyProducts';
 import HeroBanner from '../components/Dashboard/HeroBanner';
 import ProductCard from '../components/Dashboard/ProductCard';
 // Swiper imports removed
+import InviteNotification from '../components/Common/InviteNotification';
+import { getPendingInvites, acceptInvite } from '../services/api';
+import { connectSocket, onUserJoined, onUserLeft, onChatMessage, onProductUpdated, onProductUpdated as onReceiveInvite, onSocketDisconnect } from '../services/socket';
 
 export default function Dashboard({ onLogout }) {
   const [wishlists, setWishlists] = useState([]);
@@ -22,30 +25,63 @@ export default function Dashboard({ onLogout }) {
   const [selectedGroupId, setSelectedGroupId] = useState('');
   const [addToGroupMsg, setAddToGroupMsg] = useState('');
   const navigate = useNavigate();
+  const [pendingInvites, setPendingInvites] = useState([]);
+  const [showInviteNotif, setShowInviteNotif] = useState(false);
 
+  // Fetch wishlists from backend
+  const fetchWishlists = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const res = await getWishlists();
+      setWishlists(res.data);
+    } catch (err) {
+      setError('Failed to load wishlists.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch wishlists and invites on mount
   useEffect(() => {
-    async function fetchWishlists() {
-      setLoading(true);
-      setError('');
+    fetchWishlists();
+    async function fetchInvites() {
       try {
-        const res = await getWishlists();
-        console.log('Fetched wishlists:', res.data); // Debug log
-        setWishlists(res.data);
+        const res = await getPendingInvites();
+        // res.data is the user object, so use res.data.pendingInvites
+        setPendingInvites(res.data.pendingInvites || []);
+        if ((res.data.pendingInvites || []).length > 0) setShowInviteNotif(true);
       } catch (err) {
-        console.error('Error fetching wishlists:', err); // Debug log
-        setError('Failed to load wishlists.');
-      } finally {
-        setLoading(false);
+        // Ignore
       }
     }
-    fetchWishlists();
+    fetchInvites();
+    // Connect socket for real-time invites
+    const userId = localStorage.getItem('userId');
+    connectSocket(userId);
+    // Listen for real-time invite events
+    window._inviteListener = (invite) => {
+      setPendingInvites(prev => [...prev, invite]);
+      setShowInviteNotif(true);
+    };
+    // Attach listener
+    import('../services/socket').then(({ default: socket }) => {
+      socket.on('receiveInvite', window._inviteListener);
+    });
+    // Cleanup
+    return () => {
+      import('../services/socket').then(({ default: socket }) => {
+        socket.off('receiveInvite', window._inviteListener);
+      });
+    };
   }, []);
 
+  // Add wishlist handler
   const handleAdd = async (e) => {
     e.preventDefault();
     try {
-      const res = await createWishlist({ name: newName });
-      setWishlists([...wishlists, res.data]);
+      await createWishlist({ name: newName });
+      await fetchWishlists(); // Fetch updated list after add
       setShowAdd(false);
       setNewName('');
     } catch (err) {
@@ -90,8 +126,14 @@ export default function Dashboard({ onLogout }) {
     setSelectedGroupId('');
   };
 
-  const handleDelete = (id) => {
-    setWishlists(wishlists.filter(w => w._id !== id));
+  // Delete wishlist handler
+  const handleDelete = async (id) => {
+    try {
+      await deleteWishlist(id); // Call backend to delete
+      await fetchWishlists(); // Refresh wishlists from backend
+    } catch (err) {
+      setError('Failed to delete wishlist.');
+    }
   };
 
   const handleShare = (id) => {
@@ -101,12 +143,55 @@ export default function Dashboard({ onLogout }) {
     setTimeout(() => setShareMsg(''), 1500);
   };
 
+  // Accept invite handler
+  const handleAcceptInvite = async (wishlistId) => {
+    try {
+      await acceptInvite(wishlistId);
+      setPendingInvites(prev => prev.filter(i => i.wishlistId !== wishlistId));
+      // Optionally, navigate to the wishlist or refresh wishlists
+      setShowInviteNotif(false);
+      // Optionally, show a success message
+    } catch (err) {
+      // Optionally, show an error
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-violet-100 via-green-50 to-white">
       <Navbar onLogout={onLogout} />
+      {/* Pending Invites Section */}
+      {pendingInvites.length > 0 && (
+        <div className="max-w-2xl mx-auto mt-8 mb-8 p-6 bg-white rounded-xl shadow-lg border border-violet-200">
+          <h2 className="text-2xl font-bold text-purple-700 mb-4">Pending Invites</h2>
+          <ul className="divide-y">
+            {pendingInvites.map((invite, idx) => (
+              <li key={invite.wishlistId + idx} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <span className="font-semibold text-gray-800">{invite.wishlistName}</span>
+                  <span className="ml-2 text-xs text-gray-500">Invited by: {invite.invitedByName || 'Someone'}</span>
+                  <span className="ml-2 text-xs text-gray-400">{new Date(invite.createdAt).toLocaleString()}</span>
+                </div>
+                <button
+                  className="bg-green-600 text-white px-4 py-1 rounded-full text-xs font-semibold hover:bg-green-700 transition"
+                  onClick={() => handleAcceptInvite(invite.wishlistId)}
+                >
+                  Accept Invite
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {/* Invite Notification (still for real-time popups) */}
+      <InviteNotification
+        invites={pendingInvites}
+        onAccept={handleAcceptInvite}
+        onClose={() => setShowInviteNotif(false)}
+        show={showInviteNotif}
+      />
       <div className="max-w-7xl mx-auto py-8 px-4">
         <HeroBanner />
-        <h2 className="text-3xl font-extrabold mb-8 text-gray-800 tracking-tight">Demo E-Shopping Products</h2>
+        <h2 className="text-4xl font-extrabold text-gray-800 tracking-tight mb-8">Your Wishlists</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 auto-rows-fr mb-12">
           {DUMMY_PRODUCTS.map((prod, idx) => (
             <ProductCard

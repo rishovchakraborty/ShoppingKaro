@@ -10,9 +10,7 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('Sending token:', token);
-  } else {
-    console.log('No token found in localStorage');
+    // Removed token logging for security
   }
   return config;
 });
@@ -63,4 +61,14 @@ export async function getAllUsers() {
 
 export async function getNotifications() {
   return api.get('/auth/notifications');
+}
+
+// Get pending invites for the logged-in user
+export async function getPendingInvites() {
+  return api.get('/auth/me'); // Assuming /auth/me returns user info including pendingInvites
+}
+
+// Accept an invite to a wishlist
+export async function acceptInvite(wishlistId) {
+  return api.post(`/wishlists/${wishlistId}/accept-invite`);
 } 

@@ -1,9 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '../components/Common/Navbar';
 import { getWishlist, addProduct, updateProduct, deleteProduct, addComment, addReaction, inviteMember, leaveWishlist, getAllUsers } from '../services/api';
+import {
+  connectSocket,
+  disconnectSocket,
+  joinWishlistRoom,
+  leaveWishlistRoom,
+  sendProductUpdate,
+  onProductUpdated,
+  sendChatMessage,
+  onChatMessage,
+} from '../services/socket';
 
-export default function WishlistDetail() {
+export default function WishlistDetail({ onLogout }) {
   const { id } = useParams();
   console.log('WishlistDetail mounted, id:', id); // Debug log
   const [wishlist, setWishlist] = useState(null);
@@ -25,13 +35,52 @@ export default function WishlistDetail() {
   const [shareMsg, setShareMsg] = useState('');
   const [likeCounts, setLikeCounts] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
-  const [mockMembers, setMockMembers] = useState([]); // For mock invite
   const [allUsers, setAllUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [userFetchError, setUserFetchError] = useState('');
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const chatBoxRef = useRef(null); // Ref for chat box scrolling
+
+  useEffect(() => {
+    // Get userId from localStorage (assumes it's stored after login)
+    const userId = localStorage.getItem('userId');
+    connectSocket(userId);
+    joinWishlistRoom(id);
+
+    // Listen for real-time product updates
+    onProductUpdated(({ product, action }) => {
+      setProducts(prevProducts => {
+        if (action === 'add') return [...prevProducts, product];
+        if (action === 'edit') return prevProducts.map(p => p._id === product._id ? product : p);
+        if (action === 'delete') return prevProducts.filter(p => p._id !== product._id);
+        return prevProducts;
+      });
+    });
+
+    // Listen for real-time chat messages (register only once, clean up)
+    const chatHandler = ({ message, user, timestamp }) => {
+      setChatMessages(prev => [...prev, { sender: user, text: message, time: new Date(timestamp) }]);
+    };
+    onChatMessage(chatHandler);
+
+    // Cleanup: remove only this chat handler
+    return () => {
+      import('../services/socket').then(({ default: socket }) => {
+        socket.off('chatMessage', chatHandler);
+      });
+      leaveWishlistRoom(id);
+      disconnectSocket();
+    };
+  }, [id]);
+
+  // Scroll chat to bottom when messages change
+  useEffect(() => {
+    if (chatBoxRef.current) {
+      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
 
   useEffect(() => {
     async function fetchData() {
@@ -42,6 +91,14 @@ export default function WishlistDetail() {
         console.log('Fetched wishlist:', res.data);
         setWishlist(res.data);
         setProducts(res.data.products || []);
+        // Show chat history from backend
+        setChatMessages(
+          (res.data.messages || []).map(m => ({
+            sender: m.username || (m.user && (m.user.username || m.user.email)) || 'Unknown',
+            text: m.text,
+            time: new Date(m.timestamp)
+          }))
+        );
         // Initialize likeCounts and commentInputs
         const likes = {};
         const comments = {};
@@ -83,13 +140,14 @@ export default function WishlistDetail() {
     }
   }, [userSearch, allUsers, inviteType]);
 
+  // Update handleAddProduct to emit real-time event
   const handleAddProduct = async (e) => {
     e.preventDefault();
     try {
       const res = await addProduct(id, { ...newProduct, price: Number(newProduct.price) });
-      // Refresh product list after adding
-      const prodRes = await getProducts(id);
-      setProducts(prodRes.data);
+      // Emit real-time product add event
+      sendProductUpdate({ wishlistId: id, product: res.data, action: 'add' });
+      setProducts(prev => [...prev, res.data]);
       setShowAdd(false);
       setNewProduct({ name: '', imageUrl: '', price: '' });
     } catch (err) {
@@ -102,10 +160,13 @@ export default function WishlistDetail() {
     setEditProduct({ name: product.name, imageUrl: product.imageUrl, price: product.price });
   };
 
+  // Update handleUpdateProduct to emit real-time event
   const handleUpdateProduct = async (e, productId) => {
     e.preventDefault();
     try {
       const res = await updateProduct(id, productId, { ...editProduct, price: Number(editProduct.price) });
+      // Emit real-time product edit event
+      sendProductUpdate({ wishlistId: id, product: res.data, action: 'edit' });
       setProducts(products.map(p => (p._id === productId ? res.data : p)));
       setEditingId(null);
     } catch (err) {
@@ -113,9 +174,12 @@ export default function WishlistDetail() {
     }
   };
 
+  // Update handleDeleteProduct to emit real-time event
   const handleDeleteProduct = async (productId) => {
     try {
       await deleteProduct(id, productId);
+      // Emit real-time product delete event
+      sendProductUpdate({ wishlistId: id, product: { _id: productId }, action: 'delete' });
       setProducts(products.filter(p => p._id !== productId));
     } catch (err) {
       setError('Failed to delete product.');
@@ -181,60 +245,69 @@ export default function WishlistDetail() {
     setCommentInputs({ ...commentInputs, [productId]: '' });
   };
 
-  // Mock invite handler
-  const handleMockInvite = (e) => {
-    e.preventDefault();
-    setInviteStatus('');
-    if (!inviteInput) return;
-    // Add mock member to UI
-    setMockMembers((prev) => [
-      ...prev,
-      inviteType === 'email' ? { email: inviteInput } : { username: inviteInput },
-    ]);
-    setInviteStatus('Invite sent! (mocked)');
-    setInviteInput('');
-  };
+  // Helper to get current user info
+  const currentUsername = localStorage.getItem('username');
+  const currentEmail = localStorage.getItem('email');
+  const displaySender = (sender) =>
+    sender === currentUsername || sender === currentEmail ? 'You' : sender;
 
+  // Update handleSendChat to send real username/email
   const handleSendChat = (e) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    setChatMessages([...chatMessages, { sender: 'You', text: chatInput, time: new Date() }]);
+    // Send actual username/email
+    sendChatMessage({
+      wishlistId: id,
+      message: chatInput,
+      user: currentUsername || currentEmail || 'Unknown'
+    });
     setChatInput('');
   };
 
   // In the render, merge real and mock members for display
   const allMembers = [
-    ...(wishlist?.members || []),
-    ...mockMembers,
+    ...(wishlist?.members || [])
   ];
 
   // Helper to get display name
-  const getDisplayName = (m) => m.username || m.email || '';
-  const getAvatar = (m) => (m.username ? m.username[0] : (m.email ? m.email[0] : '?')).toUpperCase();
+  const getDisplayName = (m) => m?.username || m?.email || 'Unknown';
+  const getAvatar = (m) => {
+    if (m?.username && m.username.length > 0) return m.username[0].toUpperCase();
+    if (m?.email && m.email.length > 0) return m.email[0].toUpperCase();
+    return '?';
+  };
+  // Debug log for members
+  console.log('Members:', wishlist?.members);
 
   // Add a render log
   console.log('Render: wishlist:', wishlist, 'error:', error);
 
+  // Add a fallback image URL
+  const fallbackImage = '/public/placeholder.png'; // You can use a local placeholder image
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-purple-50">
-      <Navbar />
-      <div className="max-w-3xl mx-auto py-10 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-purple-50 to-purple-200">
+      <Navbar onLogout={onLogout} />
+      <div className="max-w-3xl mx-auto py-12 px-4">
         {/* Group Info Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 flex flex-col gap-4">
+        <div className="bg-white/90 rounded-3xl shadow-2xl p-10 mb-10 flex flex-col gap-6 border border-purple-100 backdrop-blur-sm">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h2 className="text-3xl font-bold text-gray-800 mb-1">{wishlist?.name}</h2>
               <div className="text-sm text-gray-500 mb-1">Owner: {wishlist?.owner?.username || wishlist?.owner?.email || 'You'}</div>
-              <div className="flex flex-wrap gap-2 items-center mb-2">
-                {allMembers.map((m, i) => (
-                  getDisplayName(m) && (
-                    <span key={i} className="bg-violet-100 text-violet-700 px-3 py-1 rounded-full text-xs font-semibold">
-                      {getDisplayName(m)}
+              {/* Remove the group member display from the group info card */}
+              {/* <div className="flex flex-wrap gap-2 items-center mb-2">
+                {(wishlist?.members || []).map((m, i) => (
+                  <span key={i} className="flex items-center gap-1 bg-violet-100 text-violet-700 px-3 py-1 rounded-full text-xs font-semibold">
+                    <span className="inline-flex items-center justify-center w-5 h-5 bg-violet-200 text-violet-700 rounded-full font-bold text-xs">
+                      {getAvatar(m)}
                     </span>
-                  )
+                    {getDisplayName(m)}
+                  </span>
                 ))}
-              </div>
-              <form onSubmit={handleMockInvite} className="flex gap-2 items-center mt-2 relative">
+              </div> */}
+              {/* Use real invite handler */}
+              <form onSubmit={handleInvite} className="flex gap-2 items-center mt-2 relative">
                 <select value={inviteType} onChange={e => setInviteType(e.target.value)} className="border rounded p-1 text-xs">
                   <option value="email">Email</option>
                   <option value="username">Username</option>
@@ -314,13 +387,16 @@ export default function WishlistDetail() {
           {/* Dummy Chat Box */}
           <div className="mt-6">
             <div className="font-bold text-purple-700 mb-2">Group Chat (Dummy)</div>
-            <div className="bg-gray-50 rounded-lg p-3 h-40 overflow-y-auto mb-2 border border-purple-100">
+            <div className="bg-gray-50 rounded-lg p-3 h-40 overflow-y-auto mb-2 border border-purple-100" ref={chatBoxRef}>
               {chatMessages.length === 0 ? (
                 <div className="text-gray-400 text-sm text-center">No messages yet. Start the conversation!</div>
               ) : (
                 chatMessages.map((msg, i) => (
                   <div key={i} className="mb-2 flex flex-col">
-                    <span className="text-xs text-purple-600 font-bold">{msg.sender} <span className="text-gray-400 font-normal">{msg.time.toLocaleTimeString()}</span></span>
+                    <span className="text-xs text-purple-600 font-bold">
+                      {displaySender(msg.sender)}{' '}
+                      <span className="text-gray-400 font-normal">{msg.time.toLocaleTimeString()}</span>
+                    </span>
                     <span className="text-sm text-gray-800 ml-2">{msg.text}</span>
                   </div>
                 ))
@@ -339,26 +415,31 @@ export default function WishlistDetail() {
           </div>
         </div>
         {/* Add Product Button */}
-        <div className="flex justify-end mb-6">
-          <button onClick={() => setShowAdd(true)} className="bg-violet-700 text-white px-6 py-2 rounded-full font-semibold shadow hover:bg-violet-800 transition">Add Product</button>
+        <div className="flex justify-end mb-8">
+          <button onClick={() => setShowAdd(true)} className="bg-gradient-to-r from-violet-700 to-purple-500 text-white px-8 py-3 rounded-full font-semibold shadow-lg hover:from-violet-800 hover:to-purple-700 transition text-lg">Add Product</button>
         </div>
         {/* Products Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-10 mb-10">
           {products.map(product => (
-            <div key={product._id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center hover:shadow-xl transition relative min-w-[320px] w-full max-w-xl mx-auto">
-              <img src={product.imageUrl} alt={product.name} className="w-28 h-28 object-cover rounded mb-2 border" />
-              <div className="font-bold text-lg text-center mb-1">{product.name}</div>
-              <div className="text-green-700 font-semibold mb-1">₹{product.price}</div>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="inline-flex items-center justify-center w-6 h-6 bg-violet-200 text-violet-700 rounded-full font-bold text-xs">
+            <div key={product._id} className="bg-white/90 rounded-2xl shadow-xl p-8 flex flex-col items-center hover:shadow-2xl transition-all duration-200 min-w-[320px] w-full max-w-xl mx-auto border border-purple-100">
+              <img
+                src={product.imageUrl || fallbackImage}
+                alt={product.name}
+                className="w-32 h-32 object-cover rounded-xl mb-3 border bg-gray-100 shadow-sm"
+                onError={e => { e.target.onerror = null; e.target.src = fallbackImage; }}
+              />
+              <div className="font-bold text-xl text-center mb-2 text-gray-800">{product.name}</div>
+              <div className="text-green-700 font-bold mb-2 text-lg">₹{product.price}</div>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="inline-flex items-center justify-center w-8 h-8 bg-violet-200 text-violet-700 rounded-full font-bold text-base">
                   {getAvatar(product.addedBy || {})}
                 </span>
-                <span className="text-xs text-gray-500">{getDisplayName(product.addedBy || {}) || 'Unknown'}</span>
+                <span className="text-sm text-gray-500">{getDisplayName(product.addedBy || {}) || 'Unknown'}</span>
               </div>
-              <div className="flex gap-2 mb-2">
-                <button onClick={() => handleLikeProduct(product._id)} className="bg-violet-100 text-violet-700 px-3 py-1 rounded-full font-semibold hover:bg-violet-200 transition">Like ({likeCounts[product._id] || 0})</button>
-                <button onClick={() => handleEditProduct(product)} className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full font-semibold hover:bg-yellow-200 transition">Edit</button>
-                <button onClick={() => handleDeleteProduct(product._id)} className="bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold hover:bg-green-200 transition">Delete</button>
+              <div className="flex gap-3 mb-3">
+                <button onClick={() => handleLikeProduct(product._id)} className="bg-violet-100 text-violet-700 px-4 py-1 rounded-full font-semibold hover:bg-violet-200 transition">Like ({likeCounts[product._id] || 0})</button>
+                <button onClick={() => handleEditProduct(product)} className="bg-yellow-100 text-yellow-700 px-4 py-1 rounded-full font-semibold hover:bg-yellow-200 transition">Edit</button>
+                <button onClick={() => handleDeleteProduct(product._id)} className="bg-green-100 text-green-700 px-4 py-1 rounded-full font-semibold hover:bg-green-200 transition">Delete</button>
               </div>
               <div className="w-full mt-2">
                 <div className="text-xs text-gray-500 mb-1">Comments:</div>
@@ -368,8 +449,8 @@ export default function WishlistDetail() {
                   ))}
                 </ul>
                 <div className="flex gap-2">
-                  <input className="flex-1 p-1 border rounded text-xs" type="text" value={commentInputs[product._id] || ''} onChange={e => setCommentInputs({ ...commentInputs, [product._id]: e.target.value })} placeholder="Add comment" />
-                  <button onClick={() => handleCommentProduct(product._id)} className="bg-violet-600 text-white px-2 py-1 rounded-full text-xs">Add</button>
+                  <input className="flex-1 p-2 border rounded text-xs" type="text" value={commentInputs[product._id] || ''} onChange={e => setCommentInputs({ ...commentInputs, [product._id]: e.target.value })} placeholder="Add comment" />
+                  <button onClick={() => handleCommentProduct(product._id)} className="bg-violet-600 text-white px-3 py-1 rounded-full text-xs">Add</button>
                 </div>
               </div>
             </div>

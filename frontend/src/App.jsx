@@ -25,7 +25,7 @@ export default function App() {
         <Route path="/login" element={!isAuthenticated ? <Login onAuth={handleAuth} /> : <Navigate to="/dashboard" />} />
         <Route path="/register" element={!isAuthenticated ? <Register onAuth={handleAuth} /> : <Navigate to="/dashboard" />} />
         <Route path="/dashboard" element={isAuthenticated ? <Dashboard onLogout={handleAuth} /> : <Navigate to="/login" />} />
-        <Route path="/wishlist/:id" element={isAuthenticated ? <WishlistDetail /> : <Navigate to="/login" />} />
+        <Route path="/wishlist/:id" element={isAuthenticated ? <WishlistDetail onLogout={handleAuth} /> : <Navigate to="/login" />} />
         {/* Catch-all: redirect unknown routes to home */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

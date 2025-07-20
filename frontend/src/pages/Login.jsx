@@ -20,6 +20,9 @@ export default function Login({ onAuth }) {
       if (res.data.user && res.data.user.username) {
         localStorage.setItem("username", res.data.user.username);
       }
+      if (res.data.user && res.data.user._id) {
+        localStorage.setItem("userId", res.data.user._id);
+      }
       if (onAuth) onAuth();
       navigate("/");
     } catch (err) {

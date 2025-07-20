@@ -1,6 +1,7 @@
 const Wishlist = require('../models/Wishlist');
 const Product = require('../models/Product');
 const User = require('../models/User');
+const { getIO } = require('../socket');
 
 exports.createWishlist = async (req, res, next) => {
   try {
@@ -22,7 +23,9 @@ exports.getWishlists = async (req, res, next) => {
   try {
     const wishlists = await Wishlist.find({ members: req.user.userId })
       .populate('owner', 'username email')
-      .populate({ path: 'products', populate: { path: 'addedBy', select: 'username email' } });
+      .populate('members', 'username email')
+      .populate({ path: 'products', populate: { path: 'addedBy', select: 'username email' } })
+      .populate('messages.user', 'username email');
     res.json(wishlists);
   } catch (err) {
     next(err);
@@ -33,13 +36,15 @@ exports.getWishlist = async (req, res, next) => {
   try {
     const wishlist = await Wishlist.findById(req.params.id)
       .populate('owner', 'username email')
-      .populate({ path: 'products', populate: { path: 'addedBy', select: 'username email' } });
+      .populate('members', 'username email')
+      .populate({ path: 'products', populate: { path: 'addedBy', select: 'username email' } })
+      .populate('messages.user', 'username email');
     if (!wishlist) {
       const err = new Error('Wishlist not found');
       err.status = 404;
       return next(err);
     }
-    if (!wishlist.members.includes(req.user.userId)) {
+    if (!wishlist.members.map(m => m._id.toString()).includes(req.user.userId)) {
       const err = new Error('Access denied');
       err.status = 403;
       return next(err);
@@ -92,7 +97,7 @@ exports.deleteWishlist = async (req, res, next) => {
   }
 };
 
-// Update inviteMember to support email/username
+// Update inviteMember to add a pending invite and emit real-time event
 exports.inviteMember = async (req, res, next) => {
   try {
     let { userId, email, username } = req.body;
@@ -115,24 +120,60 @@ exports.inviteMember = async (req, res, next) => {
       err.status = 403;
       return next(err);
     }
+    // Add a pending invite (do not add to members yet)
+    const invitedUser = await User.findById(userId);
+    if (!invitedUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    // Prevent duplicate invites
+    const alreadyInvited = invitedUser.pendingInvites.some(invite =>
+      invite.wishlistId.toString() === wishlist._id.toString()
+    );
+    if (!alreadyInvited) {
+      invitedUser.pendingInvites.push({
+        wishlistId: wishlist._id,
+        wishlistName: wishlist.name,
+        invitedBy: req.user.userId,
+        invitedByName: req.user.username || req.user.email,
+        createdAt: new Date()
+      });
+      await invitedUser.save();
+      // Emit real-time invite event if user is online
+      const io = getIO();
+      if (io) {
+        io.to(userId.toString()).emit('receiveInvite', {
+          wishlistId: wishlist._id,
+          wishlistName: wishlist.name,
+          invitedBy: req.user.userId,
+          invitedByName: req.user.username || req.user.email,
+        });
+      }
+    }
+    res.json({ message: 'User invited' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Accept invite: add user to wishlist and remove pending invite
+exports.acceptInvite = async (req, res, next) => {
+  try {
+    const { id } = req.params; // wishlistId
+    const userId = req.user.userId;
+    const wishlist = await Wishlist.findById(id);
+    if (!wishlist) {
+      return res.status(404).json({ error: 'Wishlist not found' });
+    }
+    // Add user to members if not already
     if (!wishlist.members.includes(userId)) {
       wishlist.members.push(userId);
       await wishlist.save();
-      // Add notification to invited user
-      await User.findByIdAndUpdate(userId, {
-        $push: {
-          notifications: {
-            type: 'invite',
-            wishlistId: wishlist._id,
-            wishlistName: wishlist.name,
-            invitedBy: req.user.userId,
-            read: false,
-            createdAt: new Date()
-          }
-        }
-      });
     }
-    res.json({ message: 'User invited' });
+    // Remove pending invite
+    await User.findByIdAndUpdate(userId, {
+      $pull: { pendingInvites: { wishlistId: id } }
+    });
+    res.json({ message: 'Joined wishlist' });
   } catch (err) {
     next(err);
   }
