@@ -8,7 +8,7 @@ A modern, collaborative platform where multiple users can create, manage, and in
 
 ## 🏗️ Project Architecture (2024, with Real-Time Features)
 
-![System Architecture](frontend/public/architechture.png)
+![System Architecture](frontend\public\architecture.png)
 
 **Key Features:**
 - **Real-time chat:** Users join wishlist rooms for live chat. Messages are saved to the database and loaded for all group members.
