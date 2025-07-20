@@ -6,12 +6,36 @@ A modern, collaborative platform where multiple users can create, manage, and in
 
 ---
 
+## 🏗️ Project Architecture (2024, with Real-Time Features)
+
+![System Architecture](frontend/public/architechture.png)
+
+**Key Features:**
+- **Real-time chat:** Users join wishlist rooms for live chat. Messages are saved to the database and loaded for all group members.
+- **Real-time group invitations:** Invites are sent instantly to users online; pending invites are stored for offline users. Users only join a group after accepting.
+- **Pending invites:** Users see a list of pending invites and can join groups only after accepting.
+- **Persistent chat history:** All chat messages are stored in MongoDB and loaded for all group members.
+- **Live group updates:** All group members see changes (products, chat, invites) in real time.
+
+**Layered Architecture:**
+- **View Layer (Frontend):** Handles user interaction, displays data from backend, sends user actions to backend via API calls and sockets.
+- **Routes Layer:** Handles navigation between pages (frontend) and API endpoints (backend).
+- **Validation Layer:** Ensures only valid data is processed (frontend and backend).
+- **Controller Layer:** Handles incoming requests, parses data, and sends responses.
+- **Service Layer:** Contains actual business logic (e.g., inviteUserToWishlist, saveChatMessageToWishlist).
+- **Repository/DAO Layer:** Handles CRUD, population, and complex queries.
+- **Database Layer (MongoDB):** Stores users, wishlists (with members, products, messages), and products.
+- **Helpers & Utils:** Cross-cutting logic (auth, error handling, formatting).
+- **Socket.IO Layer:** Handles real-time chat and group updates, persistent chat, and real-time invites.
+
+---
+
 ## What Does This App Do?
 - **Collaborative Wishlists:** Create and manage wishlists for any occasion, and invite others to join and contribute.
 - **Group Shopping:** Plan group purchases, events, or shared gift lists with real-time collaboration.
 - **Product Management:** Add, edit, and comment on products in any wishlist.
 - **Notifications:** Receive and view notifications for invites and group activity.
-- **Chat (Dummy):** Each group has a chat box for discussion (can be upgraded to real-time).
+- **Chat (Real-Time):** Each group has a chat box for discussion, with persistent history.
 - **Authentication:** Secure login/register with JWT.
 - **Responsive Design:** Works on desktop and mobile.
 
