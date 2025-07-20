@@ -127,7 +127,7 @@ npm install
 
 #### Example `.env` for Frontend (if using Vite proxy, usually not needed)
 ```
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=https://shoppingkaro-mg33.onrender.com/api
 ```
 
 #### Run the Frontend
@@ -136,8 +136,8 @@ npm run dev
 ```
 
 ### 4. Open the App
-- Frontend: [http://localhost:5173](http://localhost:5173)
-- Backend: [http://localhost:5000](http://localhost:5000)
+- Frontend: [https://shopping-karo.vercel.app/](https://shopping-karo.vercel.app/)
+- Backend: [https://shoppingkaro-mg33.onrender.com](https://shoppingkaro-mg33.onrender.com)
 
 ---
 
