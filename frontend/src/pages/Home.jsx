@@ -1,8 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FaGift, FaUsers, FaListAlt, FaChartBar, FaChevronDown } from "react-icons/fa";
-
-const HERO_3D_IMAGE = "/hero.png";
+import Watch3DModel from "../components/Common/Watch3DModel";
 
 export default function Home() {
   // State for image rotation
@@ -16,9 +15,9 @@ export default function Home() {
     const y = e.clientY - rect.top;
     const centerX = rect.width / 2;
     const centerY = rect.height / 2;
-    // Calculate rotation: max 18deg in each direction
-    const rotateY = ((x - centerX) / centerX) * 18;
-    const rotateX = -((y - centerY) / centerY) * 18;
+    // Calculate rotation: max 30deg in each direction for full rotation
+    const rotateY = ((x - centerX) / centerX) * 30;
+    const rotateX = -((y - centerY) / centerY) * 30;
     setRotation({ x: rotateX, y: rotateY });
   };
   const handleMouseLeave = () => setRotation({ x: 0, y: 0 });
@@ -27,23 +26,24 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 flex flex-col items-center animate-fadeIn">
       {/* SaaS Hero Section */}
       <section className="relative w-full h-[80vh] flex flex-col md:flex-row items-center justify-center overflow-hidden px-4 md:px-0">
-        {/* 3D Illustration with interactive rotation */}
+        {/* 3D Watch Model with interactive rotation */}
         <div
-          className="flex-1 flex items-center justify-center h-full z-10"
+          className="flex-1 flex items-center justify-center h-full z-10 relative cursor-grab active:cursor-grabbing"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          style={{ perspective: 1200 }}
         >
-          <img
-            src={HERO_3D_IMAGE}
-            alt="Shopping Hero"
-            className="h-[340px] md:h-[420px] w-auto object-contain drop-shadow-2xl rounded-xl animate-heroZoom transition-transform duration-200"
-            draggable="false"
-            style={{
-              maxWidth: '100%',
-              transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`
-            }}
-          />
+          <div className="w-[280px] h-[280px] md:w-[350px] md:h-[350px] relative">
+            <Watch3DModel rotation={rotation} setRotation={setRotation} />
+            
+            {/* Subtle glow effect */}
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-10 blur-2xl"></div>
+            
+            {/* Floating elements around the watch */}
+            <div className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full animate-bounce opacity-50"></div>
+            <div className="absolute -bottom-4 -left-4 w-6 h-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full animate-bounce opacity-50" style={{ animationDelay: '0.5s' }}></div>
+            <div className="absolute top-1/3 -right-8 w-5 h-5 bg-gradient-to-r from-pink-500 to-blue-400 rounded-full animate-bounce opacity-40" style={{ animationDelay: '1s' }}></div>
+            <div className="absolute bottom-1/3 -left-6 w-4 h-4 bg-gradient-to-r from-indigo-400 to-purple-500 rounded-full animate-bounce opacity-30" style={{ animationDelay: '1.5s' }}></div>
+          </div>
         </div>
         {/* Hero Content */}
         <div className="flex-1 flex flex-col items-center md:items-start justify-center text-center md:text-left z-20 animate-slideDown">
@@ -117,6 +117,8 @@ export default function Home() {
         @keyframes slideDown { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes bounceIn { 0% { transform: scale(0.8); opacity: 0; } 60% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); } }
         @keyframes heroZoom { from { transform: scale(1.1); opacity: 0.7; } to { transform: scale(1); opacity: 0.8; } }
+        @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+        .animate-float { animation: float 3s ease-in-out infinite; }
       `}</style>
     </div>
   );
