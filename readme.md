@@ -1,6 +1,6 @@
 # ShoppingKaro - Collaborative Wishlist Platform
 
-**Author:** [Your Name Here]
+**Author:** Rishov Chakraborty
 
 A modern, collaborative platform where multiple users can create, manage, and interact with wishlists in real-time—perfect for group shopping sprees, event planning, or shared gift lists. ShoppingKaro enables users to invite friends, add products, comment, react, and receive notifications, all in a beautiful, responsive UI.
 
