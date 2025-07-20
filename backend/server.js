@@ -4,8 +4,8 @@ const mongoose = require('mongoose');
 const { initSocket } = require('./socket');
 const http = require('http'); // Node's HTTP module
 
-const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/wishlist-app';
+const PORT = process.env.PORT ;
+const MONGO_URI = process.env.MONGO_URI ;
 
 // Create an HTTP server from the Express app
 const server = http.createServer(app);
