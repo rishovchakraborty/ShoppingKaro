@@ -65,7 +65,7 @@ A modern, collaborative platform where multiple users can create, manage, and in
 
 ## Architecture
 
-![System Architecture](frontend/public/architechture.png)
+![System Architecture](frontend/public/architecture.png)
 
 **System Design Overview:**
 - **View Layer (Frontend):** React components for all UI, connected to React Router for navigation.
