@@ -60,4 +60,25 @@ exports.findUser = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+exports.getAllUsers = async (req, res, next) => {
+  try {
+    const users = await User.find({}, '_id username email');
+    res.json(users);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getNotifications = async (req, res, next) => {
+  try {
+    console.log('GET /api/auth/notifications route hit');
+    const user = await User.findById(req.user.userId).select('notifications').populate('notifications.invitedBy', 'username email');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const notifications = (user.notifications || []).sort((a, b) => b.createdAt - a.createdAt);
+    res.json(notifications);
+  } catch (err) {
+    next(err);
+  }
 }; 

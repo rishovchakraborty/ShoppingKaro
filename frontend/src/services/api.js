@@ -10,6 +10,9 @@ api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+    console.log('Sending token:', token);
+  } else {
+    console.log('No token found in localStorage');
   }
   return config;
 });
@@ -52,4 +55,12 @@ export async function inviteMember(wishlistId, data) {
 
 export async function leaveWishlist(wishlistId) {
   return axios.post(`${API_URL}/wishlists/${wishlistId}/leave`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+}
+
+export async function getAllUsers() {
+  return api.get('/auth/all-users');
+}
+
+export async function getNotifications() {
+  return api.get('/auth/notifications');
 } 

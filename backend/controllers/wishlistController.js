@@ -118,6 +118,19 @@ exports.inviteMember = async (req, res, next) => {
     if (!wishlist.members.includes(userId)) {
       wishlist.members.push(userId);
       await wishlist.save();
+      // Add notification to invited user
+      await User.findByIdAndUpdate(userId, {
+        $push: {
+          notifications: {
+            type: 'invite',
+            wishlistId: wishlist._id,
+            wishlistName: wishlist.name,
+            invitedBy: req.user.userId,
+            read: false,
+            createdAt: new Date()
+          }
+        }
+      });
     }
     res.json({ message: 'User invited' });
   } catch (err) {

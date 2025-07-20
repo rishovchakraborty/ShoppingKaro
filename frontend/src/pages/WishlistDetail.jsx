@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Navbar from '../components/Common/Navbar';
-import { getWishlist, addProduct, updateProduct, deleteProduct, addComment, addReaction, inviteMember, leaveWishlist } from '../services/api';
+import { getWishlist, addProduct, updateProduct, deleteProduct, addComment, addReaction, inviteMember, leaveWishlist, getAllUsers } from '../services/api';
 
 export default function WishlistDetail() {
   const { id } = useParams();
@@ -26,6 +26,12 @@ export default function WishlistDetail() {
   const [likeCounts, setLikeCounts] = useState({});
   const [commentInputs, setCommentInputs] = useState({});
   const [mockMembers, setMockMembers] = useState([]); // For mock invite
+  const [allUsers, setAllUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [userFetchError, setUserFetchError] = useState('');
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
 
   useEffect(() => {
     async function fetchData() {
@@ -54,6 +60,28 @@ export default function WishlistDetail() {
     }
     fetchData();
   }, [id]);
+
+  useEffect(() => {
+    if (inviteType === 'username') {
+      getAllUsers()
+        .then(res => {
+          setAllUsers(res.data);
+          setUserFetchError('');
+        })
+        .catch(() => {
+          setAllUsers([]);
+          setUserFetchError('Failed to fetch users');
+        });
+    }
+  }, [inviteType]);
+
+  useEffect(() => {
+    if (inviteType === 'username' && userSearch) {
+      setFilteredUsers(allUsers.filter(u => u.username && u.username.toLowerCase().includes(userSearch.toLowerCase())));
+    } else {
+      setFilteredUsers([]);
+    }
+  }, [userSearch, allUsers, inviteType]);
 
   const handleAddProduct = async (e) => {
     e.preventDefault();
@@ -167,6 +195,13 @@ export default function WishlistDetail() {
     setInviteInput('');
   };
 
+  const handleSendChat = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    setChatMessages([...chatMessages, { sender: 'You', text: chatInput, time: new Date() }]);
+    setChatInput('');
+  };
+
   // In the render, merge real and mock members for display
   const allMembers = [
     ...(wishlist?.members || []),
@@ -199,18 +234,58 @@ export default function WishlistDetail() {
                   )
                 ))}
               </div>
-              <form onSubmit={handleMockInvite} className="flex gap-2 items-center mt-2">
+              <form onSubmit={handleMockInvite} className="flex gap-2 items-center mt-2 relative">
                 <select value={inviteType} onChange={e => setInviteType(e.target.value)} className="border rounded p-1 text-xs">
                   <option value="email">Email</option>
                   <option value="username">Username</option>
                 </select>
-                <input
-                  type="text"
-                  className="border rounded p-1 text-xs"
-                  placeholder={inviteType === 'email' ? 'Enter email' : 'Enter username'}
-                  value={inviteInput}
-                  onChange={e => setInviteInput(e.target.value)}
-                />
+                {inviteType === 'email' ? (
+                  <input
+                    type="text"
+                    className="border rounded p-1 text-xs"
+                    placeholder="Enter email"
+                    value={inviteInput}
+                    onChange={e => setInviteInput(e.target.value)}
+                  />
+                ) : (
+                  <div className="relative w-48">
+                    <input
+                      type="text"
+                      className="border rounded p-1 text-xs w-full"
+                      placeholder="Search username"
+                      value={userSearch}
+                      onChange={e => {
+                        setUserSearch(e.target.value);
+                        setInviteInput(e.target.value);
+                      }}
+                      autoComplete="off"
+                    />
+                    {userSearch && (filteredUsers.length > 0 || userSearch !== inviteInput) && (
+                      <ul className="absolute z-20 bg-white border rounded w-full mt-1 max-h-40 overflow-y-auto shadow-lg">
+                        {filteredUsers.length > 0 ? (
+                          filteredUsers.map(u => (
+                            <li
+                              key={u._id}
+                              className="px-3 py-1 hover:bg-violet-100 cursor-pointer text-xs"
+                              onClick={() => {
+                                setInviteInput(u.username);
+                                setUserSearch(u.username); // Keep input field text
+                                setFilteredUsers([]); // Hide dropdown
+                              }}
+                            >
+                              {u.username} <span className="text-gray-400">({u.email})</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="px-3 py-2 text-xs text-gray-400 select-none">No users found</li>
+                        )}
+                        {userFetchError && (
+                          <li className="px-3 py-2 text-xs text-red-500 select-none">{userFetchError}</li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                )}
                 <button type="submit" className="bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold">Invite</button>
               </form>
               {inviteStatus && <span className="text-green-600 text-xs mt-1 block">{inviteStatus}</span>}
@@ -236,6 +311,32 @@ export default function WishlistDetail() {
               {leaveStatus && <span className="text-green-600 text-xs mt-1">{leaveStatus}</span>}
             </div>
           </div>
+          {/* Dummy Chat Box */}
+          <div className="mt-6">
+            <div className="font-bold text-purple-700 mb-2">Group Chat (Dummy)</div>
+            <div className="bg-gray-50 rounded-lg p-3 h-40 overflow-y-auto mb-2 border border-purple-100">
+              {chatMessages.length === 0 ? (
+                <div className="text-gray-400 text-sm text-center">No messages yet. Start the conversation!</div>
+              ) : (
+                chatMessages.map((msg, i) => (
+                  <div key={i} className="mb-2 flex flex-col">
+                    <span className="text-xs text-purple-600 font-bold">{msg.sender} <span className="text-gray-400 font-normal">{msg.time.toLocaleTimeString()}</span></span>
+                    <span className="text-sm text-gray-800 ml-2">{msg.text}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <form className="flex gap-2" onSubmit={handleSendChat}>
+              <input
+                type="text"
+                className="flex-1 border rounded p-2 text-sm"
+                placeholder="Type a message..."
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+              />
+              <button type="submit" className="bg-purple-600 text-white px-4 py-2 rounded-full font-bold hover:bg-purple-800 transition">Send</button>
+            </form>
+          </div>
         </div>
         {/* Add Product Button */}
         <div className="flex justify-end mb-6">
@@ -244,7 +345,7 @@ export default function WishlistDetail() {
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-8">
           {products.map(product => (
-            <div key={product._id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center hover:shadow-xl transition relative">
+            <div key={product._id} className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center hover:shadow-xl transition relative min-w-[320px] w-full max-w-xl mx-auto">
               <img src={product.imageUrl} alt={product.name} className="w-28 h-28 object-cover rounded mb-2 border" />
               <div className="font-bold text-lg text-center mb-1">{product.name}</div>
               <div className="text-green-700 font-semibold mb-1">₹{product.price}</div>

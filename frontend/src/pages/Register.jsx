@@ -20,7 +20,7 @@ export default function Register({ onAuth }) {
       await registerApi({ username, email, password });
       setSuccess(true);
       if (onAuth) onAuth();
-      setTimeout(() => navigate("/"), 1500);
+      setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       setError(
         err.response?.data?.error ||

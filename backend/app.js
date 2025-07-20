@@ -14,7 +14,6 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-// TODO: Add route imports and use here
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/wishlists', require('./routes/wishlist'));
 app.use('/api/wishlists/:wishlistId/products', require('./routes/product'));
