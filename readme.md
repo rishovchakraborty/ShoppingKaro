@@ -1,6 +1,32 @@
-# Shared Wishlist App
+# ShoppingKaro - Collaborative Wishlist Platform
 
-A collaborative platform where multiple users can create, manage, and interact with wishlists in real-time—perfect for group shopping sprees, event planning, or shared gift lists.
+**Author:** [Your Name Here]
+
+A modern, collaborative platform where multiple users can create, manage, and interact with wishlists in real-time—perfect for group shopping sprees, event planning, or shared gift lists. ShoppingKaro enables users to invite friends, add products, comment, react, and receive notifications, all in a beautiful, responsive UI.
+
+---
+
+## What Does This App Do?
+- **Collaborative Wishlists:** Create and manage wishlists for any occasion, and invite others to join and contribute.
+- **Group Shopping:** Plan group purchases, events, or shared gift lists with real-time collaboration.
+- **Product Management:** Add, edit, and comment on products in any wishlist.
+- **Notifications:** Receive and view notifications for invites and group activity.
+- **Chat (Dummy):** Each group has a chat box for discussion (can be upgraded to real-time).
+- **Authentication:** Secure login/register with JWT.
+- **Responsive Design:** Works on desktop and mobile.
+
+---
+
+## Modification Details
+- **Modular MVC Architecture:** Clean separation of view, service, routing, controller, service, repository, and DB layers.
+- **Real-Time Ready:** Socket.IO structure in place for future real-time chat and updates.
+- **Notifications System:** Users receive and view notifications for invites and group activity.
+- **User Picker:** Search and filter users when inviting to a group.
+- **Personalized Navbar:** Shows greeting with username when authenticated.
+- **Robust Error Handling:** User-friendly error messages and validation throughout.
+- **Vite Proxy:** Ensures smooth frontend-backend API communication in development.
+- **Database Relationships:** All group membership, product, and notification data is tracked and queryable in MongoDB.
+- **Clean UI/UX:** Modern, responsive design with Tailwind CSS.
 
 ---
 
@@ -10,6 +36,27 @@ A collaborative platform where multiple users can create, manage, and interact w
 - **Database:** MongoDB (via MongoDB Atlas)
 - **Authentication:** JWT (simple/dummy auth)
 - **Deployment:** Vercel/Netlify (frontend), Render/Railway (backend), MongoDB Atlas (database)
+
+---
+
+## Architecture
+
+![System Architecture](frontend/public/architechture.png)
+
+**System Design Overview:**
+- **View Layer (Frontend):** React components for all UI, connected to React Router for navigation.
+- **Service/API Layer (Frontend):** Centralized API service (Axios) for all HTTP requests to backend.
+- **Routing Layer (Backend):** Express routers map API endpoints to controllers (e.g., `/api/auth/register`, `/api/wishlists/:id/invite`).
+- **Validation Layer:** Both frontend and backend validate data before processing.
+- **Controller Layer:** Handles request/response, calls service/business logic.
+- **Service Layer:** (If present) Contains business rules, orchestrates repository calls.
+- **Repository/DAO Layer:** Mongoose models and (optionally) custom DAOs for all DB access.
+- **Database Layer:** MongoDB collections for users, wishlists, products, with clear schemas and relationships.
+- **Helpers/Utils:** Auth, error handling, and reusable logic.
+- **Real-Time Layer:** (Optional) Socket.IO for live chat and updates.
+
+**Key Flows:**
+- User actions in the View are routed and validated, then handled by controllers, which call services and repositories to update/query the database. Responses and notifications are sent back through the same layers.
 
 ---
 
